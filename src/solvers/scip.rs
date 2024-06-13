@@ -14,6 +14,8 @@ use russcip::ProblemOrSolving;
 use russcip::WithSolutions;
 
 use crate::variable::{UnsolvedProblem, VariableDefinition};
+use crate::QuadraticConstraintSolver;
+use crate::QuadraticTerm;
 use crate::{
     constraint::ConstraintReference,
     solvers::{ObjectiveDirection, ResolutionError, Solution, SolverModel},
@@ -100,6 +102,75 @@ impl CardinalityConstraintSolver for SCIPProblem {
     }
 }
 
+impl QuadraticConstraintSolver for SCIPProblem {
+    fn add_quadratic_constraint(&mut self, terms: &[QuadraticTerm], rhs: f64, is_equality: bool) -> ConstraintReference {
+        let index = self.model.n_conss() + 1; 
+
+        let mut num_linear_terms = 0;
+        let mut num_quadratic_terms = 0;
+        let mut constant = 0.;
+        for term in terms {
+            match term {
+                QuadraticTerm::Quadratic(coeff, var1, var2) => {
+                    let id1 = Rc::clone(&self.id_for_var[var1]);
+                    let id2 = Rc::clone(&self.id_for_var[var2]);
+                    num_quadratic_terms += 1;
+                }
+                QuadraticTerm::Linear(coeff, var) => {
+                    let id = Rc::clone(&self.id_for_var[var]);
+                    num_linear_terms += 1;
+                }
+                QuadraticTerm::Constant(c) => {
+                    constant += c;
+                }
+            }
+        }
+
+        let lhs = match is_equality {
+            true => rhs - constant,
+            false => -f64::INFINITY,
+        };
+
+        let mut lin_coeffs = Vec::with_capacity(num_linear_terms);
+        let mut lin_vars = Vec::with_capacity(num_linear_terms);
+
+        let mut quad_coeffs = Vec::with_capacity(num_quadratic_terms);
+        let mut quad_vars1 = Vec::with_capacity(num_quadratic_terms);
+        let mut quad_vars2 = Vec::with_capacity(num_quadratic_terms);
+
+        for term in terms {
+            match term {
+                QuadraticTerm::Quadratic(coeff, var1, var2) => {
+                    let id1 = Rc::clone(&self.id_for_var[var1]);
+                    let id2 = Rc::clone(&self.id_for_var[var2]);
+                    quad_coeffs.push(*coeff);
+                    quad_vars1.push(id1);
+                    quad_vars2.push(id2);
+                }
+                QuadraticTerm::Linear(coeff, var) => {
+                    let id = Rc::clone(&self.id_for_var[var]);
+                    lin_coeffs.push(*coeff);
+                    lin_vars.push(id);
+                }
+                QuadraticTerm::Constant(_) => {}
+            }
+        }
+
+        self.model.add_cons_quadratic(
+            lin_vars,
+            &mut lin_coeffs,
+            quad_vars1,
+            quad_vars2,
+            &mut quad_coeffs,
+            lhs,
+            rhs - constant,
+            format!("q{}", index).as_str(),
+        );
+        
+        ConstraintReference { index }
+    }
+}
+
 impl SolverModel for SCIPProblem {
     type Solution = SCIPSolved;
     type Error = ResolutionError;
@@ -174,7 +245,7 @@ impl Solution for SCIPSolved {
 #[cfg(test)]
 mod tests {
     use crate::{
-        constraint, variable, variables, CardinalityConstraintSolver, Solution, SolverModel,
+        constraint, variable, variables, CardinalityConstraintSolver, QuadraticConstraintSolver, QuadraticTerm, Solution, SolverModel
     };
 
     use super::scip;
@@ -217,5 +288,22 @@ mod tests {
         model.add_cardinality_constraint(&[x, y], 1);
         let solution = model.solve().unwrap();
         assert_eq!((solution.value(x), solution.value(y)), (2., 0.));
+    }
+
+    #[test]
+    fn can_solve_quadratic_constraint() {
+        let mut vars = variables!();
+        let x = vars.add(variable().clamp(0, 2).integer());
+        let y = vars.add(variable().clamp(0, 3).integer());
+        let mut model = vars.maximise(5.0 * x + 3.0 * y).using(scip);
+
+        let mut terms = &[
+            QuadraticTerm::Quadratic(1., x, y),
+            QuadraticTerm::Linear(1., x,),
+            QuadraticTerm::Constant(1.)
+        ];
+        model.add_quadratic_constraint(terms, 4., true);
+        let solution = model.solve().unwrap();
+        assert_eq!((solution.value(x), solution.value(y)), (1., 2.));
     }
 }
