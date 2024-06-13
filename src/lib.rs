@@ -181,14 +181,10 @@ Please select just one of the two. If you need all compatible solvers, use the '
 "
 );
 
-#[cfg(any(
-    feature = "scip"
-))]
+#[cfg(any(feature = "scip"))]
 pub use quadratic_constraint_solver_trait::{QuadraticConstraintSolver, QuadraticTerm};
 
-#[cfg(any(
-    feature = "scip"
-))]
+#[cfg(any(feature = "scip"))]
 mod quadratic_constraint_solver_trait;
 
 mod expression;

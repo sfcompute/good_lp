@@ -12,7 +12,7 @@ categories = ["mathematics", "algorithms", "science", "api-bindings", "data-stru
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["coin_cbc", "singlethread-cbc"]
+default = ["coin_cbc", "singlethread-cbc", "scip"]
 singlethread-cbc = ["coin_cbc?/singlethread-cbc"]
 scip = ["russcip"]
 all_default_solvers = ["coin_cbc", "minilp", "lpsolve", "highs", "russcip", "lp-solvers", "clarabel"] # cplex-rs is not included because it is incompatible with lpsolve

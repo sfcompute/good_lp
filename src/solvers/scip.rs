@@ -103,21 +103,21 @@ impl CardinalityConstraintSolver for SCIPProblem {
 }
 
 impl QuadraticConstraintSolver for SCIPProblem {
-    fn add_quadratic_constraint(&mut self, terms: &[QuadraticTerm], rhs: f64, is_equality: bool) -> ConstraintReference {
-        let index = self.model.n_conss() + 1; 
-
+    fn add_quadratic_constraint(
+        &mut self,
+        terms: &[QuadraticTerm],
+        rhs: f64,
+        is_equality: bool,
+    ) -> ConstraintReference {
         let mut num_linear_terms = 0;
         let mut num_quadratic_terms = 0;
         let mut constant = 0.;
         for term in terms {
             match term {
-                QuadraticTerm::Quadratic(coeff, var1, var2) => {
-                    let id1 = Rc::clone(&self.id_for_var[var1]);
-                    let id2 = Rc::clone(&self.id_for_var[var2]);
+                QuadraticTerm::Quadratic(..) => {
                     num_quadratic_terms += 1;
                 }
-                QuadraticTerm::Linear(coeff, var) => {
-                    let id = Rc::clone(&self.id_for_var[var]);
+                QuadraticTerm::Linear(..) => {
                     num_linear_terms += 1;
                 }
                 QuadraticTerm::Constant(c) => {
@@ -156,6 +156,7 @@ impl QuadraticConstraintSolver for SCIPProblem {
             }
         }
 
+        let index = self.model.n_conss() + 1;
         self.model.add_cons_quadratic(
             lin_vars,
             &mut lin_coeffs,
@@ -166,7 +167,7 @@ impl QuadraticConstraintSolver for SCIPProblem {
             rhs - constant,
             format!("q{}", index).as_str(),
         );
-        
+
         ConstraintReference { index }
     }
 }
@@ -245,7 +246,8 @@ impl Solution for SCIPSolved {
 #[cfg(test)]
 mod tests {
     use crate::{
-        constraint, variable, variables, CardinalityConstraintSolver, QuadraticConstraintSolver, QuadraticTerm, Solution, SolverModel
+        constraint, variable, variables, CardinalityConstraintSolver, QuadraticConstraintSolver,
+        QuadraticTerm, Solution, SolverModel,
     };
 
     use super::scip;
@@ -298,12 +300,12 @@ mod tests {
         let mut model = vars.maximise(5.0 * x + 3.0 * y).using(scip);
 
         let mut terms = &[
-            QuadraticTerm::Quadratic(1., x, y),
-            QuadraticTerm::Linear(1., x,),
-            QuadraticTerm::Constant(1.)
+            QuadraticTerm::Quadratic(2., x, y),
+            QuadraticTerm::Linear(3., x),
+            QuadraticTerm::Constant(4.),
         ];
-        model.add_quadratic_constraint(terms, 4., true);
+        model.add_quadratic_constraint(terms, 18., true);
         let solution = model.solve().unwrap();
-        assert_eq!((solution.value(x), solution.value(y)), (1., 2.));
+        assert_eq!((solution.value(x), solution.value(y)), (2., 2.));
     }
 }
