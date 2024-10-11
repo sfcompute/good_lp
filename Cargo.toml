@@ -44,3 +44,6 @@ features = [ "all_default_solvers" ]
 default-target = "x86_64-unknown-linux-gnu"
 targets = ["x86_64-unknown-linux-gnu"]
 rustdoc-args = ["--cfg", "docsrs"]
+
+[patch.crates-io]
+coin_cbc = { git = "https://github.com/sfcompute/coin_cbc.git", rev = "f084484cfc1a5283de55e6a19837b0c065b96616" }

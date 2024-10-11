@@ -3,7 +3,7 @@
 //! You can disable it an enable another solver instead using cargo features.
 use std::convert::TryInto;
 
-use coin_cbc::{raw::Status, Col, Model, Sense, Solution as CbcSolution};
+use coin_cbc::{raw::Status, Col, Model, Sense};
 
 use crate::solvers::{MipGapError, ModelWithSOS1, WithMipGap};
 use crate::variable::{UnsolvedProblem, VariableDefinition};
@@ -122,8 +122,10 @@ impl SolverModel for CoinCbcProblem {
             self.set_parameter("ratiogap", &mip_gap.to_string());
         }
 
-        let solution = self.model.solve();
-        let raw = solution.raw();
+        let mut raw = self.model.to_raw();
+        raw.set_log_level(0);
+        raw.solve();
+        let col_solution = raw.col_solution().into();
         match raw.status() {
             Status::Stopped => Err(ResolutionError::Other("Stopped")),
             Status::Abandoned => Err(ResolutionError::Other("Abandoned")),
@@ -136,9 +138,9 @@ impl SolverModel for CoinCbcProblem {
                 } else if raw.is_proven_infeasible() {
                     Err(ResolutionError::Infeasible)
                 } else {
-                    let solution_vec = solution.raw().col_solution().into();
+                    let solution_vec = col_solution;
                     Ok(CoinCbcSolution {
-                        solution,
+                        raw,
                         solution_vec,
                     })
                 }
@@ -184,14 +186,14 @@ impl ModelWithSOS1 for CoinCbcProblem {
 
 /// A coin-cbc problem solution
 pub struct CoinCbcSolution {
-    solution: CbcSolution,
+    raw: coin_cbc::raw::Model,
     solution_vec: Vec<f64>, // See: rust-or/good_lp#6
 }
 
 impl CoinCbcSolution {
     /// Returns the inner Coin-Cbc model
     pub fn model(&self) -> &coin_cbc::raw::Model {
-        self.solution.raw()
+        &self.raw
     }
 }
 
