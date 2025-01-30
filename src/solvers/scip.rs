@@ -182,10 +182,12 @@ impl IndicatorConstraintSolver for SCIPProblem {
         rhs: f64,
     ) -> ConstraintReference {
         let rhs = rhs - lhs.constant;
-        let (vars, mut coeffs): (Vec<Rc<russcip::Variable>>, Vec<f64>) = lhs.linear.coefficients.into_iter().map(|(var, coeff)| (
-            Rc::clone(&self.id_for_var[&var]),
-            coeff
-        )).unzip();
+        let (vars, mut coeffs): (Vec<Rc<russcip::Variable>>, Vec<f64>) = lhs
+            .linear
+            .coefficients
+            .into_iter()
+            .map(|(var, coeff)| (Rc::clone(&self.id_for_var[&var]), coeff))
+            .unzip();
 
         let index = self.model.n_conss() + 1;
         self.model.add_cons_indicator(
@@ -327,7 +329,7 @@ mod tests {
         let y = vars.add(variable().clamp(0, 3).integer());
         let mut model = vars.maximise(5.0 * x + 3.0 * y).using(scip);
 
-        let mut terms = &[
+        let terms = &[
             QuadraticTerm::Quadratic(2., x, y),
             QuadraticTerm::Linear(3., x),
             QuadraticTerm::Constant(4.),
