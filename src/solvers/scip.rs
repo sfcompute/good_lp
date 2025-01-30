@@ -14,6 +14,8 @@ use russcip::ProblemOrSolving;
 use russcip::WithSolutions;
 
 use crate::variable::{UnsolvedProblem, VariableDefinition};
+use crate::Expression;
+use crate::IndicatorConstraintSolver;
 use crate::QuadraticConstraintSolver;
 use crate::QuadraticTerm;
 use crate::{
@@ -166,6 +168,32 @@ impl QuadraticConstraintSolver for SCIPProblem {
             lhs,
             rhs - constant,
             format!("q{}", index).as_str(),
+        );
+
+        ConstraintReference { index }
+    }
+}
+
+impl IndicatorConstraintSolver for SCIPProblem {
+    fn add_indicator_constraint(
+        &mut self,
+        indicator: Variable,
+        lhs: Expression,
+        rhs: f64,
+    ) -> ConstraintReference {
+        let rhs = rhs - lhs.constant;
+        let (vars, mut coeffs): (Vec<Rc<russcip::Variable>>, Vec<f64>) = lhs.linear.coefficients.into_iter().map(|(var, coeff)| (
+            Rc::clone(&self.id_for_var[&var]),
+            coeff
+        )).unzip();
+
+        let index = self.model.n_conss() + 1;
+        self.model.add_cons_indicator(
+            Rc::clone(&self.id_for_var[&indicator]),
+            vars,
+            &mut coeffs,
+            rhs,
+            format!("indicator{}", index).as_str(),
         );
 
         ConstraintReference { index }

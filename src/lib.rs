@@ -185,7 +185,13 @@ Please select just one of the two. If you need all compatible solvers, use the '
 pub use quadratic_constraint_solver_trait::{QuadraticConstraintSolver, QuadraticTerm};
 
 #[cfg(any(feature = "scip"))]
+pub use indicator_constraint_solver_trait::IndicatorConstraintSolver;
+
+#[cfg(any(feature = "scip"))]
 mod quadratic_constraint_solver_trait;
+
+#[cfg(any(feature = "scip"))]
+mod indicator_constraint_solver_trait;
 
 mod expression;
 #[macro_use]
